@@ -11,6 +11,10 @@
 # sending them. See docs/the-beckon-line.md.
 name: CI
 
+# Read-only: this workflow builds and checks, and never needs to write back.
+permissions:
+  contents: read
+
 on:
   pull_request:
   push:

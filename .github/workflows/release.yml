@@ -1,0 +1,55 @@
+# Builds the .mpackage for a tag and attaches it to the release.
+#
+# The package is built here rather than uploaded by hand so that what people
+# download is provably built from the tagged source. build.py is stdlib only,
+# so the runner's own python will do.
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install LuaJIT
+        run: sudo apt-get update && sudo apt-get install -y luajit
+
+      # A tag is not the place to discover the harness was red.
+      - name: Harness
+        run: luajit test_harness.lua
+
+      # A tag naming a version the source does not claim is the mistake this
+      # guard exists for: the .mpackage carries M.VERSION, so v0.2.0 built from
+      # a 0.1.0 source would install as 0.1.0 and nothing would say so.
+      - name: Tag matches M.VERSION
+        run: |
+          python3 -c "
+          import re, pathlib, os, sys
+          src = pathlib.Path('AchaeaBeckon.lua').read_text()
+          version = re.search(r'^M\.VERSION\s*=\s*\"([^\"]+)\"', src, re.M).group(1)
+          tag = os.environ['GITHUB_REF_NAME'].lstrip('v')
+          if version != tag:
+              sys.exit(f'tag v{tag} does not match M.VERSION {version}')
+          print('tag and source agree on', version)"
+
+      # Also confirms the committed .xml matches the .lua, since a mismatch
+      # here would ship a package built from something nobody reviewed.
+      - name: Build
+        run: |
+          python3 build.py
+          git diff --exit-code -- '*.xml' || {
+            echo "::error::committed .xml does not match the .lua at this tag"
+            exit 1
+          }
+
+      - name: Attach the package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" AchaeaBeckon.mpackage --clobber
