@@ -1,0 +1,66 @@
+# Sanity checks for what can be checked outside Mudlet.
+#
+# Note what this does *not* cover: none of it runs inside Mudlet. The harness
+# stubs the client, so a green run means the logic and the packaging hold - not
+# that the trigger fires against a real beckon. That last part cannot be tested
+# here at all, because no runner has Mudlet or a connection to the game.
+#
+# The line the pattern matches is captured verbatim - `SHOWEMOTE BECKON` prints
+# all three perspectives at once, and all three are in the harness, including
+# the two that must *not* match. But a stub feeding those lines is not the game
+# sending them. See the README.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Mudlet embeds Lua 5.1, and luajit is that exact dialect - a 5.4 parser
+      # would accept things Mudlet rejects.
+      - name: Install LuaJIT
+        run: sudo apt-get update && sudo apt-get install -y luajit
+
+      - name: Lua syntax
+        run: luajit -e "assert(loadfile('AchaeaBeckon.lua'))"
+
+      - name: Harness
+        run: luajit test_harness.lua
+
+      # The .xml is generated from the .lua and committed, and the .xml is what
+      # actually gets installed - so a .lua edited without a rebuild ships a
+      # package that does not match its source, invisibly, because the diff of
+      # the change itself looks fine. build.py is stdlib only, so the runner's
+      # own python will do.
+      - name: Package matches its .lua
+        run: |
+          python3 build.py
+          git diff --exit-code -- '*.xml' || {
+            echo "::error::AchaeaBeckon.lua changed without a rebuild - run build.py and commit the .xml"
+            exit 1
+          }
+
+      # A build.py escaping bug survives the check above, since a malformed file
+      # matching an equally malformed commit still diffs clean.
+      - name: Generated XML parses
+        run: python3 -c "import xml.etree.ElementTree as ET; ET.parse('AchaeaBeckon.xml'); print('ok')"
+
+      # build.py silently stamps 0.0.0 when it cannot find M.VERSION on a line
+      # it recognises, which is the failure mode of a version that moved and a
+      # build script that did not.
+      - name: Version is real
+        run: |
+          python3 -c "
+          import re, pathlib
+          src = pathlib.Path('AchaeaBeckon.lua').read_text()
+          m = re.search(r'^M\.VERSION\s*=\s*\"([^\"]+)\"', src, re.M)
+          assert m, 'M.VERSION not found on a line build.py recognises'
+          assert m.group(1) != '0.0.0', 'version is the 0.0.0 fallback'
+          print('version', m.group(1))"
