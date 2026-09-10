@@ -8,7 +8,7 @@
 # The line the pattern matches is captured verbatim - `SHOWEMOTE BECKON` prints
 # all three perspectives at once, and all three are in the harness, including
 # the two that must *not* match. But a stub feeding those lines is not the game
-# sending them. See the README.
+# sending them. See docs/the-beckon-line.md.
 name: CI
 
 on:
