@@ -7,6 +7,10 @@ name: Release
 
 permissions:
   contents: write
+  # Lets the publish step mint the short-lived OIDC token the Mudlet package
+  # repository verifies. Without it core.getIDToken fails with "Unable to get
+  # ACTIONS_ID_TOKEN_REQUEST_URL".
+  id-token: write
 
 on:
   push:
@@ -49,7 +53,52 @@ jobs:
             exit 1
           }
 
-      - name: Attach the package
+      # Create the release if the tag was pushed on its own, so the two orders
+      # -- tag first, or `gh release create` first -- both end up here.
+      - name: Attach the package to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" AchaeaBeckon.mpackage --clobber
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "AchaeaBeckon ${GITHUB_REF_NAME#v}" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" AchaeaBeckon.mpackage --clobber
+          echo "sha256: $(sha256sum AchaeaBeckon.mpackage)" >> "$GITHUB_STEP_SUMMARY"
+
+      # Publishing lives in this file rather than a publish.yml of its own, and
+      # that is not a style choice twice over.
+      #
+      # The registry pins job_workflow_ref -- the file the running job is
+      # actually in -- so the workflow it is registered against has to be the
+      # one holding this step; a reusable workflow would name itself instead and
+      # be refused.
+      #
+      # And a `release: published` trigger would race this job: the release
+      # exists before the step above attaches anything to it, so a publish
+      # hanging off that event can find no .mpackage asset. Here the asset is
+      # already up, and a run on a tag is pinned harder at the far end -- the
+      # asset has to belong to that tag's own release.
+      - name: Publish to the Mudlet package repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('https://packages.mudlet.org')
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: process.env.GITHUB_REF_NAME,
+            })
+            const asset = release.assets.find(a => a.name.endsWith('.mpackage'))
+            if (!asset) throw new Error('no .mpackage asset on this release')
+
+            const response = await fetch('https://packages.mudlet.org/api/publish', {
+              method: 'POST',
+              headers: {
+                authorization: `Bearer ${token}`,
+                'content-type': 'application/json',
+              },
+              body: JSON.stringify({ artifactUrl: asset.browser_download_url }),
+            })
+
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
+            core.notice(`Opened ${result.pullRequest}`)

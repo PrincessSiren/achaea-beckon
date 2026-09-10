@@ -56,6 +56,39 @@ jobs:
       - name: Generated XML parses
         run: python3 -c "import xml.etree.ElementTree as ET; ET.parse('AchaeaBeckon.xml'); print('ok')"
 
+      # The Mudlet package repository's validator greps config.lua for six
+      # fields and rejects the archive if any is missing. That check runs on
+      # their side, after a tag, on a pull request nobody here sees fail --
+      # so it runs here too, where it is cheap and attributable.
+      - name: The .mpackage carries what the registry requires
+        run: |
+          python3 build.py >/dev/null
+          python3 -c "
+          import zipfile, sys
+          cfg = zipfile.ZipFile('AchaeaBeckon.mpackage').read('config.lua').decode()
+          missing = [f for f in ('mpackage','title','version','created','author','description')
+                     if f + ' =' not in cfg]
+          if missing:
+              sys.exit('config.lua is missing: ' + ', '.join(missing))
+          print('config.lua carries all six required fields')"
+
+      # Two builds a second apart must produce the same archive, or the digest
+      # a release publishes says nothing. This is easy to regress: writestr
+      # with a plain filename takes the wall clock, and two builds inside one
+      # second hide it.
+      - name: The .mpackage is byte-reproducible
+        run: |
+          python3 build.py >/dev/null
+          a=$(sha256sum AchaeaBeckon.mpackage | cut -d" " -f1)
+          sleep 2
+          python3 build.py >/dev/null
+          b=$(sha256sum AchaeaBeckon.mpackage | cut -d" " -f1)
+          if [ "$a" != "$b" ]; then
+            echo "::error::two builds differ: $a vs $b"
+            exit 1
+          fi
+          echo "reproducible: $a"
+
       # build.py silently stamps 0.0.0 when it cannot find M.VERSION on a line
       # it recognises, which is the failure mode of a version that moved and a
       # build script that did not.
