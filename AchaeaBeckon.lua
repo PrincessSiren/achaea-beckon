@@ -160,7 +160,7 @@ local function given(value)
 end
 
 --- Achaea names are Titlecase, and every table here is keyed that way so
---- `beckonlist add jaison` and a game line saying "Jaison" are the same person.
+--- `beckonlist add vellis` and a game line saying "Vellis" are the same person.
 local function titled(name)
     name = trim(name or "")
     if name == "" then
@@ -434,7 +434,7 @@ function M.trustAdd(argument)
         return false
     end
 
-    -- "Jaison: raids with me on Thursdays" -- the note is optional and the
+    -- "Vellis: raids with me on Thursdays" -- the note is optional and the
     -- same shape the Explorer's `xpl block` uses.
     local who, note = argument:match("^([^:]+):%s*(.*)$")
     who = titled(who or argument)

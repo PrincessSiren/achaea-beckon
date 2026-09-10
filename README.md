@@ -44,9 +44,6 @@ install.
 | `beckonlist last` | The beckons seen this session, and what was done about each |
 | `beckonlist diag` | Build stamp, live trigger, pattern, what it sends |
 
-`off` is the mode to run in while you are still deciding whether the pattern is
-right: it keeps the reporting and stops the sending.
-
 Why it is built this way — the whitelist, the line it watches for, what it will
 not do — is in [docs/](docs/).
 
