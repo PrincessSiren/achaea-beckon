@@ -243,24 +243,29 @@ are in the docs: {HELP_URL}
 Source and licence (GPL-3.0-or-later): {SOURCE_URL}"""
 
 
-# Zip entries are stamped with a fixed date rather than the clock.
+# The archive is built to be byte-identical anywhere, so that rebuilding a tag
+# and comparing the digest is a check anyone can run. Two things had to give.
 #
-# `writestr` with a plain string name takes `time.localtime()`, to the second,
-# so two builds a second apart produce different archives -- which is easy to
-# miss, because two builds inside the same second do not. That would make the
-# digest of a release meaningless: the point of building the .mpackage from the
-# tag in CI is that anyone can rebuild it and compare.
+# The date. `writestr` with a plain string name takes `time.localtime()`, to
+# the second, so two builds a second apart produced different archives -- easy
+# to miss, because two builds inside the same second did not. 1980-01-01 is the
+# earliest a zip can express, and nothing reads these back: Mudlet unzips into
+# a profile directory and the dates there are the install's. `created` in
+# config.lua is where a real date belongs.
 #
-# 1980-01-01 is the earliest a zip can express, and nothing reads these back:
-# Mudlet unzips into a profile directory and the file dates there are the
-# install's, not the package's. `created` in config.lua is where a real date
-# belongs.
+# The compression. Deflate output is not defined by the format, it is whatever
+# the linked zlib emits -- and Fedora's python links zlib-ng while an Ubuntu
+# runner links stock zlib, so identical files gave different archives on the
+# two machines. That is not a bug in either; there is no portable way to pin
+# it. Storing the entries uncompressed takes the question away entirely, at
+# 70KB against 22KB. Most of the difference is the GPL text, and the trade is
+# worth it for a package whose whole claim is that you can check it yourself.
 ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 
 
 def zip_entry(name: str) -> zipfile.ZipInfo:
     info = zipfile.ZipInfo(name, date_time=ZIP_EPOCH)
-    info.compress_type = zipfile.ZIP_DEFLATED
+    info.compress_type = zipfile.ZIP_STORED
     # A ZipInfo built by hand carries no mode at all, which some extractors
     # read as 0000. Say 0644 rather than leave it to them.
     info.external_attr = 0o644 << 16
@@ -333,7 +338,7 @@ def build() -> None:
         encoding="utf-8",
     )
 
-    with zipfile.ZipFile(MPACKAGE, "w", zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(MPACKAGE, "w") as archive:
         for name, text in (
             (f"{PACKAGE_NAME}.xml", XML.read_text(encoding="utf-8")),
             ("config.lua", config_lua(version)),

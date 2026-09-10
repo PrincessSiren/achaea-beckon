@@ -73,9 +73,11 @@ jobs:
           print('config.lua carries all six required fields')"
 
       # Two builds a second apart must produce the same archive, or the digest
-      # a release publishes says nothing. This is easy to regress: writestr
-      # with a plain filename takes the wall clock, and two builds inside one
-      # second hide it.
+      # a release publishes says nothing. This is easy to regress twice over:
+      # writestr with a plain filename takes the wall clock, and two builds
+      # inside one second hide it -- and deflate output depends on which zlib
+      # python is linked against, which only shows up across two machines. The
+      # digest below is worth comparing against a local build for that reason.
       - name: The .mpackage is byte-reproducible
         run: |
           python3 build.py >/dev/null
@@ -88,6 +90,11 @@ jobs:
             exit 1
           fi
           echo "reproducible: $a"
+          python3 -c "
+          import zipfile, hashlib
+          z = zipfile.ZipFile('AchaeaBeckon.mpackage')
+          for n in z.namelist():
+              print(f'  {n}: {hashlib.sha256(z.read(n)).hexdigest()}')" 
 
       # build.py silently stamps 0.0.0 when it cannot find M.VERSION on a line
       # it recognises, which is the failure mode of a version that moved and a
