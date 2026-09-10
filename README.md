@@ -11,16 +11,22 @@ Until you add a name, every beckon is a red line and nothing is sent.
 
 ## Install
 
-Install `AchaeaBeckon.mpackage` — from a release, or by running `python3
-build.py` yourself. Then add the people you actually follow:
+Install `AchaeaBeckon.mpackage` — from the
+[latest release](../../releases/latest), or by running `python3 build.py`
+yourself. Then add the people you actually follow:
 
 ```
-beckonlist add Jaison: raids
+beckonlist add Vellis: raids
 beckonlist on
 ```
 
-`beckonlist diag` prints the build stamp that `build.py` printed. If the two
-differ, Mudlet is running an older install.
+A release is one pinned version: it is tagged `v<version>`, the `.mpackage`
+attached to it is built from that tag, and `beckonlist` prints the same version
+back. The version alone cannot tell you whether Mudlet is running what is on
+disk, though — it says what you expect whether or not anything was rebuilt.
+`beckonlist diag` prints the build stamp for that, the one `build.py` printed
+when it built the package. If the two differ, Mudlet is running an older
+install.
 
 ## Commands
 
@@ -38,23 +44,8 @@ differ, Mudlet is running an older install.
 | `beckonlist last` | The beckons seen this session, and what was done about each |
 | `beckonlist diag` | Build stamp, live trigger, pattern, what it sends |
 
-`off` is the mode to run in while you are still deciding whether the pattern is
-right: it keeps the reporting and stops the sending.
-
-## Why it is built this way
-
-Each of these is the reasoning behind a decision that looks arbitrary until you
-know what it guards against.
-
-- **[Why a list, and why it follows](docs/why-a-list.md)** — why a whitelist
-  rather than a prompt, and why it does not read your ALLY list.
-- **[What gets sent, and what does not](docs/what-it-sends.md)** — one command,
-  and why the `lose <beckoner>` this was adapted from named the wrong person.
-- **[The line it watches for](docs/the-beckon-line.md)** — the capture behind
-  the pattern, the two lines it has to *miss*, and why the tail is unanchored.
-- **[Where the list is saved](docs/persistence.md)** — and why an unreadable
-  file is renamed rather than written over.
-- **[Testing](docs/testing.md)** — what the harness covers, and what it cannot.
+Why it is built this way — the whitelist, the line it watches for, what it will
+not do — is in [docs/](docs/).
 
 ## Licence
 

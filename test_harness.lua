@@ -157,7 +157,7 @@ assert(liveHandlers() == 1, "and one handler")
 
 -- ---- nobody is trusted out of the box -------------------------------------
 clear()
-assert(feed("Jaison beckons you to him."), "the default pattern matches")
+assert(feed("Vellis beckons you to him."), "the default pattern matches")
 assert(echoed("NOT on your trusted list"), "an unknown name is called out")
 assert(#SENT == 0, "and nothing is sent")
 
@@ -166,34 +166,34 @@ M.trustList()
 assert(echoed("nobody is trusted"), "the empty list says so plainly")
 
 -- ---- a trusted name moves you ---------------------------------------------
-M.trustAdd("jaison: raids on Thursdays")
+M.trustAdd("vellis: raids on Thursdays")
 clear()
-assert(feed("Jaison beckons you to him."))
+assert(feed("Vellis beckons you to him."))
 assert(echoed("trusted, following"), "a trusted beckon says so")
-assert(sent("fol Jaison"), "and follows -- FOLLOW joins the group, HELP 6.4")
+assert(sent("fol Vellis"), "and follows -- FOLLOW joins the group, HELP 6.4")
 assert(#SENT == 1, "one command, not two: LOSE would name the wrong person")
 
 -- Typed lowercase, printed Titlecase, same person.
-assert(M.trust["Jaison"], "names are stored Titlecase whatever you typed")
+assert(M.trust["Vellis"], "names are stored Titlecase whatever you typed")
 
 -- ---- the tail of the line is not anchored ---------------------------------
 -- The pronoun and the punctuation are guesses; the default pattern deliberately
 -- stops before them, so all of these still fire.
 for _, line in ipairs({
-  "Jaison beckons you to her.",
-  "Jaison beckons you to them.",
-  "Jaison beckons you",
-  "Jaison beckons you to his side!",
+  "Vellis beckons you to her.",
+  "Vellis beckons you to them.",
+  "Vellis beckons you",
+  "Vellis beckons you to his side!",
 }) do
   clear()
   assert(feed(line), "unanchored tail: " .. line)
-  assert(sent("fol Jaison"), "followed on: " .. line)
+  assert(sent("fol Vellis"), "followed on: " .. line)
 end
 
 -- ...but the name has to be at the start of the line, so chat about a beckon
 -- is not a beckon.
 clear()
-assert(not feed("Jaison says, \"Slangen beckons you to her.\""),
+assert(not feed("Vellis says, \"Slangen beckons you to her.\""),
   "a say quoting the line is not the line")
 assert(#SENT == 0, "and moves nobody")
 
@@ -206,12 +206,12 @@ assert(#SENT == 0, "and moves nobody")
 -- An untargeted BECKON does not contain "beckons" at all, and the onlooker's
 -- copy of a targeted one puts the target's name where the pattern needs "you".
 clear()
-assert(not feed("Jaison makes a beckoning motion."),
+assert(not feed("Vellis makes a beckoning motion."),
   "an untargeted beckon names nobody, so it moves nobody")
 assert(#SENT == 0)
 
 clear()
-assert(not feed("Jaison beckons Slangen to her."),
+assert(not feed("Vellis beckons Slangen to her."),
   "watching somebody else get beckoned must not move you")
 assert(#SENT == 0)
 
@@ -224,7 +224,7 @@ assert(#SENT == 0)
 -- ---- disarmed -------------------------------------------------------------
 M.arm(false)
 clear()
-feed("Jaison beckons you to him.")
+feed("Vellis beckons you to him.")
 assert(echoed("`beckonlist off` is set"),
   "a disarmed trusted beckon still reports")
 assert(#SENT == 0, "and sends nothing")
@@ -241,23 +241,23 @@ assert(echoed("NOT on your trusted list"), "removal takes effect immediately")
 assert(#SENT == 0)
 
 -- ---- a re-add keeps the reason and the date -------------------------------
-local before = M.trust["Jaison"].since
-M.trustAdd("Jaison")
-assert(M.trust["Jaison"].note == "raids on Thursdays",
+local before = M.trust["Vellis"].since
+M.trustAdd("Vellis")
+assert(M.trust["Vellis"].note == "raids on Thursdays",
   "a bare re-add does not erase the reason")
-assert(M.trust["Jaison"].since == before, "nor the date")
-M.trustAdd("Jaison: also runs Dragon hunts")
-assert(M.trust["Jaison"].note == "also runs Dragon hunts", "a new one replaces")
+assert(M.trust["Vellis"].since == before, "nor the date")
+M.trustAdd("Vellis: also runs Dragon hunts")
+assert(M.trust["Vellis"].note == "also runs Dragon hunts", "a new one replaces")
 
 -- ---- the pattern is a setting ---------------------------------------------
 clear()
 M.setPattern("^(\\w+) gestures for you to follow")
 assert(liveTriggers() == 1, "changing the pattern replaces the trigger")
 clear()
-assert(feed("Jaison gestures for you to follow"), "the new pattern is live")
-assert(sent("fol Jaison"))
+assert(feed("Vellis gestures for you to follow"), "the new pattern is live")
+assert(sent("fol Vellis"))
 clear()
-assert(not feed("Jaison beckons you to him."), "and the old one is not")
+assert(not feed("Vellis beckons you to him."), "and the old one is not")
 
 clear()
 M.setPattern("^(\\w+ beckons")
@@ -268,12 +268,12 @@ assert(M.config.pattern == "^(\\w+) gestures for you to follow",
 M.setPattern("default")
 assert(M.config.pattern == M.DEFAULT_PATTERN, "`default` puts it back")
 clear()
-assert(feed("Jaison beckons you to him."))
-assert(sent("fol Jaison"))
+assert(feed("Vellis beckons you to him."))
+assert(sent("fol Vellis"))
 
 -- ---- `beckonlist test` sends nothing, whatever it decides ----------------
 clear()
-M.test("Jaison beckons you to him.")
+M.test("Vellis beckons you to him.")
 assert(echoed("would send"), "test says what it would do")
 assert(#SENT == 0, "and does not do it")
 
@@ -289,17 +289,17 @@ assert(echoed("no match"), "and a line that does not match at all")
 -- ---- what a trusted beckon sends is a setting too --------------------------
 M.setFollow("follow")
 clear()
-feed("Jaison beckons you to him.")
-assert(sent("follow Jaison"), "the follow command can be changed")
+feed("Vellis beckons you to him.")
+assert(sent("follow Vellis"), "the follow command can be changed")
 M.setFollow("fol")
 
 -- ---- the recent list is bounded -------------------------------------------
 M.config.recent = 3
-for _ = 1, 5 do feed("Jaison beckons you to him.") end
+for _ = 1, 5 do feed("Vellis beckons you to him.") end
 assert(#M.state.recent == 3, "the recent list is trimmed to its setting")
 clear()
 M.last()
-assert(echoed("Jaison"), "and prints")
+assert(echoed("Vellis"), "and prints")
 
 -- ---- status ---------------------------------------------------------------
 -- The one thing this package is asked at a glance is whether it is on, so the
@@ -341,17 +341,17 @@ M.report()
 -- unloaded keys back as empty. Here that is two keys, trust and config, and
 -- both are checked.
 M.arm(false)
-M.setFollow("fol Jaison")   -- deliberately odd, to prove it is what came back
+M.setFollow("fol Vellis")   -- deliberately odd, to prove it is what came back
 M.stop()
 assert(liveHandlers() == 0 and liveTriggers() == 0, "stop leaves nothing live")
 
 beckonlist = nil
 assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
 M = beckonlist
-assert(M.trust["Jaison"], "the trusted list came back")
-assert(M.trust["Jaison"].note == "also runs Dragon hunts", "with its reason")
+assert(M.trust["Vellis"], "the trusted list came back")
+assert(M.trust["Vellis"].note == "also runs Dragon hunts", "with its reason")
 assert(M.config.armed == false, "and the settings")
-assert(M.config.follow == "fol Jaison", "all of them")
+assert(M.config.follow == "fol Vellis", "all of them")
 
 M.setFollow("fol")
 M.arm(true)
@@ -360,7 +360,7 @@ beckonlist = nil
 assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
 M = beckonlist
 assert(M.config.follow == "fol", "a later save did not flatten the list")
-assert(M.trust["Jaison"], "which is the failure mode being tested")
+assert(M.trust["Vellis"], "which is the failure mode being tested")
 
 -- A setting the package no longer has must not come back out of an old file.
 DISK["/harness/achaea-beckon.lua"].config.obsolete = true

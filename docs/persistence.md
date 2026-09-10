@@ -22,5 +22,5 @@ Settings are filtered through the defaults by name *and* type on the way in, so
 a setting dropped in a later version cannot come back to life out of an old
 file.
 
-A re-add is not an erasure: `beckonlist add Jaison` typed again keeps the
+A re-add is not an erasure: `beckonlist add Vellis` typed again keeps the
 reason and the date recorded the first time, unless you type a new reason.

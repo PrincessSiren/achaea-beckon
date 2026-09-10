@@ -53,13 +53,21 @@ It remains a setting rather than a constant, because a capture settles what the
 game prints today and this reflex should outlive that:
 
 ```
-beckonlist test Jaison beckons you to her.
+beckonlist test Aliapoe beckons you to her.
 ```
 
 `beckonlist test` runs the current pattern against that text, says who it would
 name and what it would send, and **sends nothing** whatever it decides.
 `beckonlist pattern <regex>` installs and persists a replacement;
 `beckonlist pattern default` puts the shipped one back.
+
+`beckonlist off` is the third of these, and the one to actually run in while you
+are still deciding whether the pattern is right. It keeps the matching and the
+reporting and stops only the sending, so a beckon still names whoever sent it
+and still says what it would have done — against real game output, from people
+who really beckoned you, rather than against a line you pasted in yourself.
+`beckonlist last` then reads back what the session saw. Turn it on once the
+answers stop surprising you.
 
 This is why the trigger is created at runtime with `tempRegexTrigger` rather
 than declared as a `<Trigger>` element in the XML: a declared trigger's pattern
