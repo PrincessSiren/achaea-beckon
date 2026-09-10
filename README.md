@@ -45,7 +45,8 @@ install.
 | `beckonlist diag` | Build stamp, live trigger, pattern, what it sends |
 
 Why it is built this way — the whitelist, the line it watches for, what it will
-not do — is in [docs/](docs/).
+not do — is in [docs/](docs/). To send a patch, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 

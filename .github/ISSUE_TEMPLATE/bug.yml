@@ -1,0 +1,64 @@
+name: Something is wrong
+description: A beckon that did not fire, one that fired when it should not, or anything else misbehaving.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The two most useful things you can put in this report are the **exact
+        line the game printed** and the output of **`beckonlist diag`**. Almost
+        every question about this package is answered by one of them.
+
+  - type: textarea
+    id: line
+    attributes:
+      label: The line the game printed
+      description: >-
+        Copy it exactly, including punctuation. Paraphrasing loses the part that
+        matters -- the pattern only looks at the front of the line, and the tail
+        is where the surprises are. If you can, run `SHOWEMOTE BECKON` and paste
+        that instead: it prints the emote from every side at once.
+      placeholder: Vellis beckons you to her.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: expected
+    attributes:
+      label: What should have happened?
+      options:
+        - It should have followed, and did not
+        - It followed, and should not have
+        - It matched the wrong name
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: diag
+    attributes:
+      label: "`beckonlist diag`"
+      description: >-
+        Paste the whole thing. The build stamp is the only reliable answer to
+        "is Mudlet running what I think it is" -- the version says what you
+        expect whether or not anything was rebuilt.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: last
+    attributes:
+      label: "`beckonlist last`"
+      description: What the session saw and what it did about each. Optional, but it usually settles it.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: mudlet
+    attributes:
+      label: Mudlet version
+      placeholder: "4.22.0"
+    validations:
+      required: true
