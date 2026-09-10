@@ -53,7 +53,7 @@ It remains a setting rather than a constant, because a capture settles what the
 game prints today and this reflex should outlive that:
 
 ```
-beckonlist test Jaison beckons you to her.
+beckonlist test Aliapoe beckons you to her.
 ```
 
 `beckonlist test` runs the current pattern against that text, says who it would

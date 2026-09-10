@@ -16,7 +16,7 @@ Install `AchaeaBeckon.mpackage` — from the
 yourself. Then add the people you actually follow:
 
 ```
-beckonlist add Jaison: raids
+beckonlist add Vellis: raids
 beckonlist on
 ```
 
@@ -46,6 +46,9 @@ install.
 
 `off` is the mode to run in while you are still deciding whether the pattern is
 right: it keeps the reporting and stops the sending.
+
+Why it is built this way — the whitelist, the line it watches for, what it will
+not do — is in [docs/](docs/).
 
 ## Licence
 
