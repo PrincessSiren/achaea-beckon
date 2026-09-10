@@ -33,6 +33,18 @@ HERE = Path(__file__).parent
 # build.py that are the preferred form for making modifications -- so the
 # package cannot serve as its own source, and has to say where the source is.
 SOURCE_URL = "https://github.com/PrincessSiren/achaea-beckon"
+HELP_URL = f"{SOURCE_URL}/tree/main/docs"
+
+# The date that goes into config.lua as `created`, which Mudlet's package
+# repository requires and its validator greps for.
+#
+# A constant rather than today's date, because both build artefacts here are
+# byte-reproducible: build twice with no source change and the .xml and the
+# .mpackage are identical, which is what lets anyone rebuild a tag and check
+# the digest against the one the release published. A wall clock in the
+# archive would throw that away for a field nothing reads back. Move it when
+# the version moves.
+CREATED = "2026-09-10"
 LUA = HERE / "AchaeaBeckon.lua"
 XML = HERE / "AchaeaBeckon.xml"
 MPACKAGE = HERE / "AchaeaBeckon.mpackage"
@@ -206,15 +218,77 @@ def commands_lua(lua_source: str) -> str:
     )
 
 
+DESCRIPTION = f"""# AchaeaBeckon
+
+A whitelist for who is allowed to move you.
+
+Someone beckons. If they are on your list you follow them automatically; if
+they are not, you get a red line naming them and nothing is sent.
+
+**Nobody is trusted out of the box.** A list of people who may move your
+character is not something to ship pre-populated, so until you add a name every
+beckon is a red line and nothing is sent.
+
+```
+beckonlist add Vellis: raids
+beckonlist on
+```
+
+Type `beckonlist` in game for the full command list, and `beckonlist off` to
+watch and report without sending anything while you are still deciding.
+
+Why it is built this way, and the captured game output the trigger is read off,
+are in the docs: {HELP_URL}
+
+Source and licence (GPL-3.0-or-later): {SOURCE_URL}"""
+
+
+# The archive is built to be byte-identical anywhere, so that rebuilding a tag
+# and comparing the digest is a check anyone can run. Two things had to give.
+#
+# The date. `writestr` with a plain string name takes `time.localtime()`, to
+# the second, so two builds a second apart produced different archives -- easy
+# to miss, because two builds inside the same second did not. 1980-01-01 is the
+# earliest a zip can express, and nothing reads these back: Mudlet unzips into
+# a profile directory and the dates there are the install's. `created` in
+# config.lua is where a real date belongs.
+#
+# The compression. Deflate output is not defined by the format, it is whatever
+# the linked zlib emits -- and Fedora's python links zlib-ng while an Ubuntu
+# runner links stock zlib, so identical files gave different archives on the
+# two machines. That is not a bug in either; there is no portable way to pin
+# it. Storing the entries uncompressed takes the question away entirely, at
+# 70KB against 22KB. Most of the difference is the GPL text, and the trade is
+# worth it for a package whose whole claim is that you can check it yourself.
+ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
+
+
+def zip_entry(name: str) -> zipfile.ZipInfo:
+    info = zipfile.ZipInfo(name, date_time=ZIP_EPOCH)
+    info.compress_type = zipfile.ZIP_STORED
+    # A ZipInfo built by hand carries no mode at all, which some extractors
+    # read as 0000. Say 0644 rather than leave it to them.
+    info.external_attr = 0o644 << 16
+    return info
+
+
 def config_lua(version: str) -> str:
+    """The package metadata Mudlet reads back out of the archive.
+
+    Host::readPackageInfo runs this file as Lua and keeps every global that is
+    a string, so a key added here is a key Mudlet's package manager can show.
+    mpackage, title, version, created, author and description are the six the
+    Mudlet package repository's validator requires; helpURL is what its "help"
+    button opens.
+    """
     return (
         f'mpackage = "{PACKAGE_NAME}"\n'
         f'version = "{version}"\n'
+        f'created = "{CREATED}"\n'
         f'author = "PrincessSiren"\n'
         f'title = "Beckon whitelist for Achaea"\n'
-        f"description = [[Watches for someone beckoning you. A name on your "
-        f"trusted list is followed automatically; anyone else gets a red line "
-        f"and nothing is sent. Type `beckonlist` in game for the commands. Source and licence (GPL-3): {SOURCE_URL}]]\n"
+        f"description = [[{DESCRIPTION}]]\n"
+        f'helpURL = "{HELP_URL}"\n'
         f'license = "GPL-3.0-or-later"\n'
         f'source = "{SOURCE_URL}"\n'
     )
@@ -228,9 +302,9 @@ def license_text() -> str:
     workshop shares the root one, and the same build.py works either way.
 
     It goes *inside* the .mpackage because Mudlet's package format has no
-    licence field -- config.lua carries mpackage, version, author, title and
-    description and nothing else -- so this file is the only way the terms
-    reach anyone who installs the package.
+    licence field -- config.lua has no key for it, whatever else it carries --
+    so this file is the only way the terms reach anyone who installs the
+    package.
     """
     for path in (HERE / "LICENSE", *(p / "LICENSE" for p in HERE.parents)):
         if path.is_file():
@@ -264,10 +338,13 @@ def build() -> None:
         encoding="utf-8",
     )
 
-    with zipfile.ZipFile(MPACKAGE, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(f"{PACKAGE_NAME}.xml", XML.read_text(encoding="utf-8"))
-        archive.writestr("config.lua", config_lua(version))
-        archive.writestr("LICENSE", license_text())
+    with zipfile.ZipFile(MPACKAGE, "w") as archive:
+        for name, text in (
+            (f"{PACKAGE_NAME}.xml", XML.read_text(encoding="utf-8")),
+            ("config.lua", config_lua(version)),
+            ("LICENSE", license_text()),
+        ):
+            archive.writestr(zip_entry(name), text)
 
     print(f"{PACKAGE_NAME} {version} build {stamp} ({len(ALIASES)} aliases)")
     print(f"  `beckonlist diag` in Mudlet should say build {stamp}; "
