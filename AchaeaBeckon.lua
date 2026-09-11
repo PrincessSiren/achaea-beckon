@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.1.1"
+M.VERSION = "0.1.2"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}

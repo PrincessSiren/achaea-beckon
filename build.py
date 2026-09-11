@@ -33,7 +33,13 @@ HERE = Path(__file__).parent
 # build.py that are the preferred form for making modifications -- so the
 # package cannot serve as its own source, and has to say where the source is.
 SOURCE_URL = "https://github.com/PrincessSiren/achaea-beckon"
-HELP_URL = f"{SOURCE_URL}/tree/main/docs"
+DOCS_URL = f"{SOURCE_URL}/tree/main/docs"
+
+# What the package manager's globe button opens -- dlgPackageManager reads
+# `helpURL` and nothing else. The repository root rather than docs/: someone
+# clicking through from a package listing wants what it is and how to install
+# it, which is the README, and the description already links docs/ by name.
+HELP_URL = SOURCE_URL
 
 # The date that goes into config.lua as `created`, which Mudlet's package
 # repository requires and its validator greps for.
@@ -44,7 +50,7 @@ HELP_URL = f"{SOURCE_URL}/tree/main/docs"
 # the digest against the one the release published. A wall clock in the
 # archive would throw that away for a field nothing reads back. Move it when
 # the version moves.
-CREATED = "2026-09-10"
+CREATED = "2026-09-11"
 LUA = HERE / "AchaeaBeckon.lua"
 XML = HERE / "AchaeaBeckon.xml"
 MPACKAGE = HERE / "AchaeaBeckon.mpackage"
@@ -238,7 +244,7 @@ Type `beckonlist` in game for the full command list, and `beckonlist off` to
 watch and report without sending anything while you are still deciding.
 
 Why it is built this way, and the captured game output the trigger is read off,
-are in the docs: {HELP_URL}
+are in the docs: {DOCS_URL}
 
 Source and licence (GPL-3.0-or-later): {SOURCE_URL}"""
 
@@ -278,8 +284,8 @@ def config_lua(version: str) -> str:
     Host::readPackageInfo runs this file as Lua and keeps every global that is
     a string, so a key added here is a key Mudlet's package manager can show.
     mpackage, title, version, created, author and description are the six the
-    Mudlet package repository's validator requires; helpURL is what its "help"
-    button opens.
+    Mudlet package repository's validator requires; helpURL is what the package
+    manager's globe button opens.
     """
     return (
         f'mpackage = "{PACKAGE_NAME}"\n'

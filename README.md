@@ -1,5 +1,8 @@
 # AchaeaBeckon
 
+[![mpkg](https://img.shields.io/badge/mpkg-AchaeaBeckon-blue)](https://packages.mudlet.org/packages/achaeabeckon)
+[![release](https://img.shields.io/github/v/release/PrincessSiren/achaea-beckon)](../../releases/latest)
+
 A whitelist for who is allowed to move you.
 
 Someone beckons. If they are on your list you follow them automatically; if they
@@ -11,9 +14,9 @@ Until you add a name, every beckon is a red line and nothing is sent.
 
 ## Install
 
-Install `AchaeaBeckon.mpackage` — from the
-[latest release](../../releases/latest), or by running `python3 build.py`
-yourself. Then add the people you actually follow:
+In Mudlet, type `mpkg install AchaeaBeckon`. Or install `AchaeaBeckon.mpackage`
+from the [latest release](../../releases/latest), or build it yourself with
+`python3 build.py`. Then add the people you actually follow:
 
 ```
 beckonlist add Vellis: raids
