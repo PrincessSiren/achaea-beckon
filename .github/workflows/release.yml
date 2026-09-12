@@ -56,13 +56,19 @@ jobs:
       # Create the release if the tag was pushed on its own, so the two orders
       # -- tag first, or `gh release create` first -- both end up here.
       - name: Attach the package to the release
+        id: attach
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --title "AchaeaBeckon ${GITHUB_REF_NAME#v}" --generate-notes
           gh release upload "$GITHUB_REF_NAME" AchaeaBeckon.mpackage --clobber
-          echo "sha256: $(sha256sum AchaeaBeckon.mpackage)" >> "$GITHUB_STEP_SUMMARY"
+          # The digest is carried forward as an output rather than hashed again
+          # later: the announcement quotes it, and a second sha256sum is a
+          # second chance to quote a different file.
+          sha256=$(sha256sum AchaeaBeckon.mpackage | cut -d" " -f1)
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+          echo "sha256: $sha256  AchaeaBeckon.mpackage" >> "$GITHUB_STEP_SUMMARY"
 
       # Publishing lives in this file rather than a publish.yml of its own, and
       # that is not a style choice twice over.
@@ -78,6 +84,7 @@ jobs:
       # already up, and a run on a tag is pinned harder at the far end -- the
       # asset has to belong to that tag's own release.
       - name: Publish to the Mudlet package repository
+        id: publish
         uses: actions/github-script@v7
         with:
           script: |
@@ -101,4 +108,64 @@ jobs:
 
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
+            core.setOutput('pullRequest', result.pullRequest || '')
             core.notice(`Opened ${result.pullRequest}`)
+
+      # Say so in Discord, where the people who install this actually are. It
+      # is the last step for two reasons: everything it names has to exist
+      # first -- the release, the attached .mpackage, the registry pull
+      # request -- and nothing downstream depends on it.
+      #
+      # It is also the only step allowed to fail. By the time it runs the
+      # package is released and published; a webhook that 500s is a message
+      # nobody got, not a release that went wrong, and re-running the job to
+      # get the message out would ask the registry to publish the same version
+      # twice. So the failure is a warning and the job stays green.
+      #
+      # The webhook URL is a secret because it is a bearer credential: anyone
+      # holding it can post to that channel as this package. A secret cannot be
+      # read in an `if:`, which is why it is lifted into `env` first -- that is
+      # also what makes the step skip cleanly in a fork, where no secret exists
+      # and nobody wants this repository's channel notified about their tag.
+      - name: Announce in Discord
+        if: env.DISCORD_WEBHOOK != ''
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          SHA256: ${{ steps.attach.outputs.sha256 }}
+          REGISTRY_PR: ${{ steps.publish.outputs.pullRequest }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
+          download="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/AchaeaBeckon.mpackage"
+
+          # jq builds the JSON so that nothing interpolated has to be trusted to
+          # be quote-free, and the payload goes to curl as a file so the webhook
+          # URL is the only thing on the command line.
+          jq -n \
+            --arg title "AchaeaBeckon $version" \
+            --arg release "$release" \
+            --arg download "$download" \
+            --arg sha256 "$SHA256" \
+            --arg pr "$REGISTRY_PR" \
+            '{
+              username: "AchaeaBeckon",
+              embeds: [{
+                title: $title,
+                url: $release,
+                color: 15115329,   # 0xE6A441, the gold in the Discord icon
+                description: "A whitelist for who is allowed to move you.\n\n`mpkg install AchaeaBeckon`",
+                fields: ([
+                  { name: "Package", value: ("[AchaeaBeckon.mpackage](" + $download + ")") },
+                  { name: "sha256", value: ("`" + $sha256 + "`") }
+                ] + (if $pr == "" then [] else [
+                  { name: "Mudlet package repository", value: $pr }
+                ] end))
+              }]
+            }' > "$RUNNER_TEMP/discord.json"
+
+          curl --fail-with-body -sS -X POST \
+            -H "content-type: application/json" \
+            -d "@$RUNNER_TEMP/discord.json" \
+            "$DISCORD_WEBHOOK" \
+            || echo "::warning::the Discord announcement did not go out; the release itself is fine"
