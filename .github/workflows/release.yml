@@ -46,29 +46,31 @@ jobs:
       # Also confirms the committed .xml matches the .lua, since a mismatch
       # here would ship a package built from something nobody reviewed.
       - name: Build
+        id: build
         run: |
           python3 build.py
           git diff --exit-code -- '*.xml' || {
             echo "::error::committed .xml does not match the .lua at this tag"
             exit 1
           }
+          # The stamp is read back out of the .xml the check above just proved
+          # matches the .lua, rather than parsed off build.py's own output: it
+          # is the string that ships, and it is the string `beckonlist diag`
+          # prints back in Mudlet.
+          build=$(sed -n 's/^beckonlist\.BUILD = "\(.*\)"$/\1/p' AchaeaBeckon.xml)
+          [ -n "$build" ] || { echo "::error::no build stamp in AchaeaBeckon.xml"; exit 1; }
+          echo "stamp=$build" >> "$GITHUB_OUTPUT"
 
       # Create the release if the tag was pushed on its own, so the two orders
       # -- tag first, or `gh release create` first -- both end up here.
       - name: Attach the package to the release
-        id: attach
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --title "AchaeaBeckon ${GITHUB_REF_NAME#v}" --generate-notes
           gh release upload "$GITHUB_REF_NAME" AchaeaBeckon.mpackage --clobber
-          # The digest is carried forward as an output rather than hashed again
-          # later: the announcement quotes it, and a second sha256sum is a
-          # second chance to quote a different file.
-          sha256=$(sha256sum AchaeaBeckon.mpackage | cut -d" " -f1)
-          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
-          echo "sha256: $sha256  AchaeaBeckon.mpackage" >> "$GITHUB_STEP_SUMMARY"
+          echo "sha256: $(sha256sum AchaeaBeckon.mpackage)" >> "$GITHUB_STEP_SUMMARY"
 
       # Publishing lives in this file rather than a publish.yml of its own, and
       # that is not a style choice twice over.
@@ -84,7 +86,6 @@ jobs:
       # already up, and a run on a tag is pinned harder at the far end -- the
       # asset has to belong to that tag's own release.
       - name: Publish to the Mudlet package repository
-        id: publish
         uses: actions/github-script@v7
         with:
           script: |
@@ -108,13 +109,22 @@ jobs:
 
             const result = await response.json()
             if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`)
-            core.setOutput('pullRequest', result.pullRequest || '')
             core.notice(`Opened ${result.pullRequest}`)
 
-      # Say so in Discord, where the people who install this actually are. It
-      # is the last step for two reasons: everything it names has to exist
-      # first -- the release, the attached .mpackage, the registry pull
-      # request -- and nothing downstream depends on it.
+      # Say so in Discord, where the people who install this actually are.
+      #
+      # What the message carries is the package and the build stamp, which are
+      # the two things a player can act on: the .mpackage to install, and the
+      # string `beckonlist diag` prints back. The version cannot answer "is
+      # Mudlet running this?" -- it says what you expect whether or not
+      # anything was rebuilt -- and the stamp is the content hash that can. The
+      # registry pull request was here and is not: it is about getting the
+      # package into Mudlet's package manager, which is this repository's
+      # business rather than the channel's, and it is still in the run log.
+      #
+      # It stays the last step even so. Everything it names has to exist first,
+      # and announcing a version whose publish step threw would be announcing a
+      # release that is not finished.
       #
       # It is also the only step allowed to fail. By the time it runs the
       # package is released and published; a webhook that 500s is a message
@@ -132,8 +142,7 @@ jobs:
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          SHA256: ${{ steps.attach.outputs.sha256 }}
-          REGISTRY_PR: ${{ steps.publish.outputs.pullRequest }}
+          BUILD: ${{ steps.build.outputs.stamp }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           release="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME"
@@ -146,8 +155,7 @@ jobs:
             --arg title "AchaeaBeckon $version" \
             --arg release "$release" \
             --arg download "$download" \
-            --arg sha256 "$SHA256" \
-            --arg pr "$REGISTRY_PR" \
+            --arg build "$BUILD" \
             '{
               username: "AchaeaBeckon",
               embeds: [{
@@ -155,12 +163,10 @@ jobs:
                 url: $release,
                 color: 15115329,   # 0xE6A441, the gold in the Discord icon
                 description: "A whitelist for who is allowed to move you.\n\n`mpkg install AchaeaBeckon`",
-                fields: ([
+                fields: [
                   { name: "Package", value: ("[AchaeaBeckon.mpackage](" + $download + ")") },
-                  { name: "sha256", value: ("`" + $sha256 + "`") }
-                ] + (if $pr == "" then [] else [
-                  { name: "Mudlet package repository", value: $pr }
-                ] end))
+                  { name: "Build", value: ("`" + $build + "` -- `beckonlist diag` should say this; anything else is a stale install") }
+                ]
               }]
             }' > "$RUNNER_TEMP/discord.json"
 

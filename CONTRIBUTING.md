@@ -81,7 +81,11 @@ tag, attaches it to the release, and publishes it to the Mudlet package
 repository, which lands as a pull request there.
 
 Then it announces the release in Discord, if — and only if — a `DISCORD_WEBHOOK`
-secret is set on the repository. That is a channel webhook URL from Discord's
+secret is set on the repository. The message carries the two things a player can
+act on: the `.mpackage` and the build stamp `beckonlist diag` prints back. Not
+the version — that says what you expect whether or not anything was rebuilt —
+and not the registry pull request, which is this repository's business rather
+than the channel's and is in the run log. That is a channel webhook URL from Discord's
 *Server Settings → Integrations → Webhooks*, and it is a secret rather than a
 setting because it is a bearer credential: anyone holding it can post to that
 channel as this package.
