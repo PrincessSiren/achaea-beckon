@@ -72,3 +72,24 @@ released, and it moves **once per merged PR** rather than once per push —
 bumping mid-review mints numbers for states nobody installed.
 
 `M.VERSION` in the Lua is the only place it lives; `build.py` reads it.
+
+## Releasing
+
+Pushing a tag `v<version>` is what ships. `release.yml` runs the harness, refuses
+a tag whose number `M.VERSION` does not claim, builds the `.mpackage` from that
+tag, attaches it to the release, and publishes it to the Mudlet package
+repository, which lands as a pull request there.
+
+Then it announces the release in Discord, if — and only if — a `DISCORD_WEBHOOK`
+secret is set on the repository. That is a channel webhook URL from Discord's
+*Server Settings → Integrations → Webhooks*, and it is a secret rather than a
+setting because it is a bearer credential: anyone holding it can post to that
+channel as this package.
+
+The announcement is the last step and the only one allowed to fail. By the time
+it runs the release exists and the package is published, so a webhook that is
+down is a message nobody got rather than a release that went wrong — it leaves a
+warning and the run stays green. Re-running the job to get the message out would
+ask the registry to publish the same version twice; post it by hand instead. A
+fork has no secret, so the step skips there rather than notifying this
+repository's channel about someone else's tag.
