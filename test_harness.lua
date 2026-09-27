@@ -249,6 +249,44 @@ assert(M.trust["Vellis"].since == before, "nor the date")
 M.trustAdd("Vellis: also runs Dragon hunts")
 assert(M.trust["Vellis"].note == "also runs Dragon hunts", "a new one replaces")
 
+-- ---- a name one slip away from a trusted one is warned about ---------------
+-- The case that prompted it: "Slagnen" typed for "Slangen" made a second
+-- entry, a stranger with follow rights, and said nothing.
+M.trustAdd("Slangen: Vissa dad")
+local slips = {
+  Slagnen = "swapped neighbours",
+  Slangan = "one letter changed",
+  Slangenn = "one letter extra",
+  Slngen = "one letter dropped",
+  Xlangen = "first letter changed",
+  Slangne = "last two swapped",
+}
+for typo, how in pairs(slips) do
+  clear()
+  M.trustAdd(typo .. ": House aid.")
+  assert(M.trust[typo], "a lookalike is still added (" .. how .. ")")
+  assert(echoed(typo .. " looks like Slangen, who is already trusted"),
+    "and warned about: " .. how)
+  assert(echoed("`beckonlist rm " .. typo .. "`"), "with the undo spelled out")
+  M.trustRemove(typo)
+end
+for _, other in ipairs({ "Sangelne", "Slan", "Harran", "Slangen" }) do
+  clear()
+  M.trustAdd(other)
+  assert(not echoed("looks like"), other .. " is not a slip of Slangen")
+  if other ~= "Slangen" then M.trustRemove(other) end
+end
+assert(M.trust["Slangen"].note == "Vissa dad",
+  "re-adding the real name is not warned about and keeps its reason")
+clear()
+M.trustAdd("Slangan")
+M.trustAdd("Slangin")
+assert(echoed("Slangin looks like Slangan, Slangen, who are already trusted"),
+  "every lookalike is named")
+M.trustRemove("Slangan")
+M.trustRemove("Slangin")
+M.trustRemove("Slangen")
+
 -- ---- the pattern is a setting ---------------------------------------------
 clear()
 M.setPattern("^(\\w+) gestures for you to follow")

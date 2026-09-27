@@ -93,7 +93,7 @@ ALIASES: list[tuple[str, str, str, str, str]] = [
         r"^beckonlist\s+add(?:\s+(.+))?$",
         "beckonlist.trustAdd(matches[2])",
         "beckonlist add <name>[: why]",
-        "let a name move you -- the note is optional and kept on a re-add",
+        "let a name move you -- the note is optional and kept on a re-add; warns on a near-miss spelling",
     ),
     (
         "rm",
