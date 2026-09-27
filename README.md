@@ -38,7 +38,7 @@ install.
 | `beckonlist` | Status, then this list |
 | `beckonlist status` | On or off, who is trusted, where the list is saved |
 | `beckonlist who` | Who may beckon you, since when, and why |
-| `beckonlist add <name>[: note]` | Let a name move you; the note is optional |
+| `beckonlist add <name>[: note]` | Let a name move you; the note is optional. Warns if the name is one typo away from someone already trusted |
 | `beckonlist rm <name>` | Take a name back off |
 | `beckonlist on` / `off` | Arm it, or report without sending |
 | `beckonlist follow [cmd]` | What a trusted beckon sends — `fol` by default |

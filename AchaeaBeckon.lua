@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.1.4"
+M.VERSION = "0.2.0"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}
@@ -180,6 +180,46 @@ local function names()
     for name in pairs(M.trust) do list[#list + 1] = name end
     table.sort(list)
     return list
+end
+
+--- True when two names are one slip of the keyboard apart: one letter changed,
+--- added or dropped, or two neighbours swapped ("Slagnen" for "Slangen"). A
+--- name mistyped on `add` is not harmless -- it is a stranger who may now move
+--- you -- so this is what `add` checks a new name against the list with.
+local function oneSlipApart(a, b)
+    a, b = a:lower(), b:lower()
+    if a == b then
+        return false
+    end
+    if #a > #b then
+        a, b = b, a
+    end
+    if #b - #a > 1 then
+        return false
+    end
+    local i = 1
+    while i <= #a and a:sub(i, i) == b:sub(i, i) do
+        i = i + 1
+    end
+    if #a < #b then
+        -- one letter extra in b, at i
+        return a:sub(i) == b:sub(i + 1)
+    end
+    -- same length: one letter changed at i, or i and i+1 swapped
+    return a:sub(i + 1) == b:sub(i + 1)
+        or (a:sub(i, i) == b:sub(i + 1, i + 1)
+            and a:sub(i + 1, i + 1) == b:sub(i, i)
+            and a:sub(i + 2) == b:sub(i + 2))
+end
+
+local function lookalikes(who)
+    local found = {}
+    for _, name in ipairs(names()) do
+        if oneSlipApart(who, name) then
+            found[#found + 1] = name
+        end
+    end
+    return found
 end
 
 --- "  since 2026-09-09", or nothing for an entry with no date -- which is what
@@ -445,6 +485,10 @@ function M.trustAdd(argument)
         return false
     end
 
+    -- Asked before the name goes in, so it cannot find itself. Only a new name
+    -- is checked: a re-add is already on the list and was warned about then.
+    local similar = M.trust[who] == nil and lookalikes(who) or {}
+
     local entry = M.trust[who]
     if type(entry) ~= "table" then
         entry = { since = os.time() }
@@ -458,6 +502,15 @@ function M.trustAdd(argument)
 
     M.save()
     info(who .. " can move you." .. (entry.note and (" (" .. entry.note .. ")") or ""))
+    -- Added anyway, since two people can have names this close. The warning
+    -- says so, and says how to undo it, because until then the misspelling is
+    -- someone who can move you.
+    if #similar > 0 then
+        warn(who .. " looks like " .. table.concat(similar, ", ")
+            .. (#similar == 1 and ", who is" or ", who are")
+            .. " already trusted. If that was a typo, `beckonlist rm "
+            .. who .. "` -- until then " .. who .. " can move you too.")
+    end
     return true
 end
 

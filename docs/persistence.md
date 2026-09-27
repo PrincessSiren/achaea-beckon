@@ -24,3 +24,11 @@ file.
 
 A re-add is not an erasure: `beckonlist add Vellis` typed again keeps the
 reason and the date recorded the first time, unless you type a new reason.
+
+A near miss is not a re-add, though. `beckonlist add Slagnen` when `Slangen` is
+already trusted makes a **second** entry -- the list is keyed by the exact name
+-- and that second name is a stranger who may now move you. So `add` warns when
+a new name is one slip of the keyboard from one already on the list: one letter
+changed, added or dropped, or two neighbours swapped. It still adds the name,
+because two real people can be named that closely, and the warning spells out
+the `beckonlist rm` that undoes it.
