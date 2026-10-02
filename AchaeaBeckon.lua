@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.2.0"
+M.VERSION = "0.2.1"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}
@@ -239,6 +239,11 @@ end
 -- filtered through CONFIG_DEFAULTS on the way in, so a setting dropped in a
 -- later version does not come back to life out of an old file.
 
+-- What every failed save ends with. The commands that call M.save go on to
+-- say what they changed, and that is true: the change is in effect. What it
+-- is not is kept, and this is the line that says so.
+local NOT_KEPT = "The change is in effect now and will be gone when Mudlet restarts."
+
 function M.save()
     if not M.file then
         return false
@@ -249,14 +254,32 @@ function M.save()
     -- overwriting is the one outcome that loses names for good.
     if S.loaded == "unreadable" then
         local kept = M.file .. ".bad"
-        if pcall(os.rename, M.file, kept) then
-            warn("kept the unreadable file as " .. kept)
+        -- os.rename reports failure by returning nil, not by raising. If the
+        -- file could not be moved aside, writing now would destroy the only
+        -- copy, so nothing is written and the next save tries again.
+        -- os.rename's second result is the reason, when there is one. An
+        -- existing .bad from an earlier time is the likely one on Windows,
+        -- where a rename does not replace its target.
+        local ok, moved, why = pcall(os.rename, M.file, kept)
+        if not (ok and moved) then
+            S.moveFailed = tostring(why or moved or "no reason given")
+            warn("could not move the unreadable file aside (" .. S.moveFailed
+                .. "), so nothing was written over it. " .. NOT_KEPT
+                .. " To fix it, move or delete " .. kept .. " or " .. M.file
+                .. " by hand; the next change saves.")
+            return false
         end
+        S.moveFailed = nil
+        warn("kept the unreadable file as " .. kept)
         S.loaded = "fresh"
     end
-    local ok = pcall(table.save, M.file, { trust = M.trust, config = M.config })
-    if not ok then
-        warn("could not save the trusted list")
+    -- table.save reports a file it could not open by returning nil and a
+    -- message, not by raising, and returns nothing when it worked. So the
+    -- message is the sign of a failure and pcall's own result is not.
+    local ok, _, failed = pcall(table.save, M.file, { trust = M.trust, config = M.config })
+    if not ok or failed ~= nil then
+        warn("could not save the trusted list to " .. M.file .. " ("
+            .. tostring(failed or "no reason given") .. "). " .. NOT_KEPT)
         return false
     end
     S.savedAt = os.time()
@@ -667,8 +690,14 @@ function M.storage()
         return "<ansi_yellow>not saved<reset> -- no getMudletHomeDir here"
     end
     if S.loaded == "unreadable" then
+        -- Nothing is moved until there is something to save, and the move
+        -- can fail. Saying "kept as .bad" in either case would be untrue.
         return "<ansi_light_red>UNREADABLE<reset>: " .. M.file
-            .. " <ansi_light_black>(kept as .bad, not overwritten)<reset>"
+            .. " <ansi_light_black>(" .. (S.moveFailed
+                and ("could not be moved aside: " .. S.moveFailed
+                    .. " -- changes are NOT being saved")
+                or "not overwritten; moved to .bad at the next save")
+            .. ")<reset>"
     end
     local tail
     if S.loaded == "loaded" then
@@ -789,6 +818,7 @@ function M.start()
     end
     S.handlers = {
         registerAnonymousEventHandler("gmcp.Char.Name", M.onName),
+        registerAnonymousEventHandler("sysUninstall", M.onUninstall),
     }
     -- The frame usually landed long before this script was recompiled.
     M.onName()
@@ -798,6 +828,26 @@ end
 
 function M.stop()
     teardown()
+    return true
+end
+
+-- The name Mudlet knows the package by, which is what its uninstall event
+-- carries. build.py has the same string; the harness holds the two together.
+M.PACKAGE = "AchaeaBeckon"
+
+--- Removing the package takes its aliases and its script away and leaves
+--- everything created at runtime behind, still running with no command left
+--- to stop it. `sysUninstall` rather than `sysUninstallPackage`: it is the
+--- one event raised however the package was installed, and one installed
+--- through the Module Manager never raises the other. Mudlet raises it
+--- before it removes anything, and for every package, so the name is
+--- checked. An upgrade or a module sync is an uninstall and an install:
+--- the new copy's script starts it again.
+function M.onUninstall(_, name)
+    if name ~= M.PACKAGE then
+        return false
+    end
+    M.stop()
     return true
 end
 

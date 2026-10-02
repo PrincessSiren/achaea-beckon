@@ -14,6 +14,13 @@ copy of the names. It is never overwritten. The unreadable file is renamed to
 `achaea-beckon.lua.bad`, the fresh state is written beside it, and both the
 load and the rename say so on screen.
 
+If the rename itself fails -- on Windows it does when a `.bad` file from an
+earlier time is still there -- nothing is written at all, since writing would
+destroy the copy that could not be moved. Every change says it will be gone at
+the next restart, `beckonlist status` says the list is not being saved, and
+moving or deleting either file by hand lets the next change save. The same
+warning follows a file that cannot be written for any other reason.
+
 They are written as one envelope with both keys and read back the same way,
 for a reason learned the hard way elsewhere: a key that is saved but not loaded
 comes back empty, and the next edit writes that emptiness over the file.
