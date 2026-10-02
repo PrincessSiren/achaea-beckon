@@ -798,7 +798,7 @@ function M.start()
     end
     S.handlers = {
         registerAnonymousEventHandler("gmcp.Char.Name", M.onName),
-        registerAnonymousEventHandler("sysUninstallPackage", M.onUninstall),
+        registerAnonymousEventHandler("sysUninstall", M.onUninstall),
     }
     -- The frame usually landed long before this script was recompiled.
     M.onName()
@@ -817,9 +817,12 @@ M.PACKAGE = "AchaeaBeckon"
 
 --- Removing the package takes its aliases and its script away and leaves
 --- everything created at runtime behind, still running with no command left
---- to stop it. Mudlet raises this before it removes anything, and for every
---- package, so the name is checked. An upgrade is an uninstall and an
---- install: the new copy's script starts it again.
+--- to stop it. `sysUninstall` rather than `sysUninstallPackage`: it is the
+--- one event raised however the package was installed, and one installed
+--- through the Module Manager never raises the other. Mudlet raises it
+--- before it removes anything, and for every package, so the name is
+--- checked. An upgrade or a module sync is an uninstall and an install:
+--- the new copy's script starts it again.
 function M.onUninstall(_, name)
     if name ~= M.PACKAGE then
         return false
