@@ -86,7 +86,7 @@ jobs:
       # already up, and a run on a tag is pinned harder at the far end -- the
       # asset has to belong to that tag's own release.
       - name: Publish to the Mudlet package repository
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const token = await core.getIDToken('https://packages.mudlet.org')
