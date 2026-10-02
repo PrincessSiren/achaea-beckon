@@ -145,7 +145,7 @@ assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
 local M = beckonlist
 
 assert(liveTriggers() == 1, "the beckon trigger is installed on load")
-assert(liveHandlers() == 1, "and one handler, for gmcp.Char.Name")
+assert(liveHandlers() == 2, "and two handlers: gmcp.Char.Name and the uninstall")
 assert(M.state.name == "Thoth", "your own name is read at start, not awaited")
 
 -- ---- a recompile replaces, it does not double -----------------------------
@@ -153,7 +153,7 @@ assert(M.state.name == "Thoth", "your own name is read at start, not awaited")
 -- fresh on every recompile and the live trigger would be left running.
 assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
 assert(liveTriggers() == 1, "a recompile leaves one trigger, not two")
-assert(liveHandlers() == 1, "and one handler")
+assert(liveHandlers() == 2, "and two handlers")
 
 -- ---- nobody is trusted out of the box -------------------------------------
 clear()
@@ -430,6 +430,48 @@ assert(DISK["/harness/achaea-beckon.lua.bad"] == "CORRUPT",
 assert(type(DISK["/harness/achaea-beckon.lua"]) == "table",
   "and the new state is saved beside it")
 assert(DISK["/harness/achaea-beckon.lua"].trust["Slangen"], "with the new name")
+
+-- ---- a save that fails says so ---------------------------------------------
+-- Mudlet's table.save does not raise on a file it cannot open: it returns nil
+-- and a message, and returns nothing when it worked.
+do
+  local realSave = table.save
+  table.save = function() return nil, "Permission denied" end
+  ECHOED = {}
+  assert(M.save() == false, "a file that cannot be written is reported, not passed off as saved")
+  assert(echoed("could not save"), "and it is said out loud")
+  table.save = realSave
+  assert(M.save() == true, "a save that works still says so")
+end
+
+-- ---- removing the package stops it -----------------------------------------
+-- Mudlet takes the aliases and the script and leaves the temp trigger, which
+-- would go on sending the follow with no `beckonlist off` left to stop it.
+-- The event is raised for every package.
+do
+  local function uninstall(name)
+    local n = 0
+    for _, handler in pairs(HANDLERS) do
+      if handler.event == "sysUninstallPackage" then
+        n = n + 1
+        handler.fn("sysUninstallPackage", name)
+      end
+    end
+    return n
+  end
+  assert(uninstall("SomebodyElse") == 1, "one uninstall handler, not one per load")
+  assert(liveHandlers() == 2 and liveTriggers() == 1,
+    "another package being removed changes nothing")
+  local src = assert(io.open(HERE .. "/build.py")):read("*a")
+  assert(src:match('PACKAGE_NAME = "([^"]+)"') == M.PACKAGE,
+    "the name the event is checked against is the one the package is built under")
+  uninstall(M.PACKAGE)
+  assert(liveHandlers() == 0 and liveTriggers() == 0,
+    "removing this package kills the trigger and every handler")
+  M.start()
+  assert(liveHandlers() == 2 and liveTriggers() == 1,
+    "and an install after it starts it again")
+end
 
 M.stop()
 assert(liveHandlers() == 0 and liveTriggers() == 0, "stop unregisters everything")

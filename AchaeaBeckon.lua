@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.2.0"
+M.VERSION = "0.2.1"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}
@@ -254,8 +254,11 @@ function M.save()
         end
         S.loaded = "fresh"
     end
-    local ok = pcall(table.save, M.file, { trust = M.trust, config = M.config })
-    if not ok then
+    -- table.save reports a file it could not open by returning nil and a
+    -- message, not by raising, and returns nothing when it worked. So the
+    -- message is the sign of a failure and pcall's own result is not.
+    local ok, _, failed = pcall(table.save, M.file, { trust = M.trust, config = M.config })
+    if not ok or failed ~= nil then
         warn("could not save the trusted list")
         return false
     end
@@ -789,6 +792,7 @@ function M.start()
     end
     S.handlers = {
         registerAnonymousEventHandler("gmcp.Char.Name", M.onName),
+        registerAnonymousEventHandler("sysUninstallPackage", M.onUninstall),
     }
     -- The frame usually landed long before this script was recompiled.
     M.onName()
@@ -798,6 +802,23 @@ end
 
 function M.stop()
     teardown()
+    return true
+end
+
+-- The name Mudlet knows the package by, which is what its uninstall event
+-- carries. build.py has the same string; the harness holds the two together.
+M.PACKAGE = "AchaeaBeckon"
+
+--- Removing the package takes its aliases and its script away and leaves
+--- everything created at runtime behind, still running with no command left
+--- to stop it. Mudlet raises this before it removes anything, and for every
+--- package, so the name is checked. An upgrade is an uninstall and an
+--- install: the new copy's script starts it again.
+function M.onUninstall(_, name)
+    if name ~= M.PACKAGE then
+        return false
+    end
+    M.stop()
     return true
 end
 
