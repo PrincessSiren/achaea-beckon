@@ -445,7 +445,20 @@ do
   os.rename = function() return nil, "Permission denied" end
   clear()
   assert(M.save() == false, "a save that could not move the file aside reports it")
-  assert(echoed("could not move"), "out loud")
+  assert(echoed("could not move") and echoed("Permission denied"), "out loud, with the reason")
+  assert(echoed("gone when Mudlet restarts") and echoed("by hand"),
+    "and says what that means and how to get out of it")
+  clear()
+  M.status()
+  assert(echoed("NOT being saved") and not echoed("kept as .bad"),
+    "status does not claim a .bad file that was never made")
+  -- The command that made the change still says what it did, which is true
+  -- now; the warning before it is what says it will not last.
+  clear()
+  M.trustAdd("Vellis")
+  assert(echoed("gone when Mudlet restarts") and echoed("Vellis can move you"),
+    "an add that was not kept says both")
+  M.trustRemove("Vellis")
   assert(DISK["/harness/achaea-beckon.lua"] == "CORRUPT", "and the file is left as it was")
   assert(M.state.loaded == "unreadable", "so the next save tries the move again")
   os.rename = realRename
@@ -461,7 +474,8 @@ do
   table.save = function() return nil, "Permission denied" end
   ECHOED = {}
   assert(M.save() == false, "a file that cannot be written is reported, not passed off as saved")
-  assert(echoed("could not save"), "and it is said out loud")
+  assert(echoed("could not save") and echoed("Permission denied")
+    and echoed("gone when Mudlet restarts"), "and it is said out loud, with what it means")
   table.save = realSave
   assert(M.save() == true, "a save that works still says so")
 end

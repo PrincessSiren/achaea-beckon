@@ -239,6 +239,11 @@ end
 -- filtered through CONFIG_DEFAULTS on the way in, so a setting dropped in a
 -- later version does not come back to life out of an old file.
 
+-- What every failed save ends with. The commands that call M.save go on to
+-- say what they changed, and that is true: the change is in effect. What it
+-- is not is kept, and this is the line that says so.
+local NOT_KEPT = "The change is in effect now and will be gone when Mudlet restarts."
+
 function M.save()
     if not M.file then
         return false
@@ -252,11 +257,19 @@ function M.save()
         -- os.rename reports failure by returning nil, not by raising. If the
         -- file could not be moved aside, writing now would destroy the only
         -- copy, so nothing is written and the next save tries again.
-        local ok, moved = pcall(os.rename, M.file, kept)
+        -- os.rename's second result is the reason, when there is one. An
+        -- existing .bad from an earlier time is the likely one on Windows,
+        -- where a rename does not replace its target.
+        local ok, moved, why = pcall(os.rename, M.file, kept)
         if not (ok and moved) then
-            warn("could not move the unreadable file aside; nothing was saved over it")
+            S.moveFailed = tostring(why or moved or "no reason given")
+            warn("could not move the unreadable file aside (" .. S.moveFailed
+                .. "), so nothing was written over it. " .. NOT_KEPT
+                .. " To fix it, move or delete " .. kept .. " or " .. M.file
+                .. " by hand; the next change saves.")
             return false
         end
+        S.moveFailed = nil
         warn("kept the unreadable file as " .. kept)
         S.loaded = "fresh"
     end
@@ -265,7 +278,8 @@ function M.save()
     -- message is the sign of a failure and pcall's own result is not.
     local ok, _, failed = pcall(table.save, M.file, { trust = M.trust, config = M.config })
     if not ok or failed ~= nil then
-        warn("could not save the trusted list")
+        warn("could not save the trusted list to " .. M.file .. " ("
+            .. tostring(failed or "no reason given") .. "). " .. NOT_KEPT)
         return false
     end
     S.savedAt = os.time()
@@ -676,8 +690,14 @@ function M.storage()
         return "<ansi_yellow>not saved<reset> -- no getMudletHomeDir here"
     end
     if S.loaded == "unreadable" then
+        -- Nothing is moved until there is something to save, and the move
+        -- can fail. Saying "kept as .bad" in either case would be untrue.
         return "<ansi_light_red>UNREADABLE<reset>: " .. M.file
-            .. " <ansi_light_black>(kept as .bad, not overwritten)<reset>"
+            .. " <ansi_light_black>(" .. (S.moveFailed
+                and ("could not be moved aside: " .. S.moveFailed
+                    .. " -- changes are NOT being saved")
+                or "not overwritten; moved to .bad at the next save")
+            .. ")<reset>"
     end
     local tail
     if S.loaded == "loaded" then
