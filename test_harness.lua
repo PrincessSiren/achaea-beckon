@@ -431,6 +431,28 @@ assert(type(DISK["/harness/achaea-beckon.lua"]) == "table",
   "and the new state is saved beside it")
 assert(DISK["/harness/achaea-beckon.lua"].trust["Slangen"], "with the new name")
 
+-- ---- a file that cannot be moved aside is not written over -----------------
+-- os.rename returns nil when it fails; it does not raise. Carrying on to the
+-- write would put a near-empty list over the only copy of the names.
+do
+  DISK["/harness/achaea-beckon.lua"] = "CORRUPT"
+  M.stop()
+  beckonlist = nil
+  assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
+  M = beckonlist
+  assert(M.state.loaded == "unreadable")
+  local realRename = os.rename
+  os.rename = function() return nil, "Permission denied" end
+  clear()
+  assert(M.save() == false, "a save that could not move the file aside reports it")
+  assert(echoed("could not move"), "out loud")
+  assert(DISK["/harness/achaea-beckon.lua"] == "CORRUPT", "and the file is left as it was")
+  assert(M.state.loaded == "unreadable", "so the next save tries the move again")
+  os.rename = realRename
+  assert(M.save() == true and DISK["/harness/achaea-beckon.lua.bad"] == "CORRUPT",
+    "which then works as before")
+end
+
 -- ---- a save that fails says so ---------------------------------------------
 -- Mudlet's table.save does not raise on a file it cannot open: it returns nil
 -- and a message, and returns nothing when it worked.
