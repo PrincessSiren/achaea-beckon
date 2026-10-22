@@ -419,6 +419,8 @@ clear()
 assert(loadfile(HERE .. "/AchaeaBeckon.lua"))()
 M = beckonlist
 assert(echoed("could not read"), "an unreadable file is reported, not ignored")
+assert(echoed("before the next save") and not echoed("kept as"),
+  "without promising a .bad file the save has not made and may not make")
 assert(M.state.loaded == "unreadable", "and recorded")
 clear()
 M.status()

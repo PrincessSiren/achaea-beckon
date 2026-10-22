@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.2.1"
+M.VERSION = "0.2.2"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}
@@ -299,11 +299,13 @@ function M.load()
         -- Saying nothing here would be the expensive kind of quiet: the next
         -- `beckonlist add` would write over a file that may still hold every
         -- name in it. save() moves it aside instead, and this says so while
-        -- there is still time to go and look at it.
+        -- there is still time to go and look at it. It says "before the next
+        -- save" rather than "kept as .bad" because nothing has moved yet, and
+        -- the move can fail; M.storage is careful the same way.
         S.loaded, S.loadedCount = "unreadable", 0
         warn("could not read " .. M.file .. " -- your trusted list is NOT "
-            .. "loaded. It will be kept as " .. M.file
-            .. ".bad rather than overwritten.")
+            .. "loaded. The file is not overwritten: it is moved to " .. M.file
+            .. ".bad before the next save, and nothing is written if that fails.")
         return false
     end
     if type(stored.trust) == "table" then
