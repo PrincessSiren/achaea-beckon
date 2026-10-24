@@ -12,7 +12,9 @@ The harness stubs Mudlet — including a small `rex_pcre` that translates the
 handful of regex constructs these patterns use, so both the "compiles" and
 "does not compile" paths are exercised — and drives lines through the real
 trigger rather than calling the handler, because the trigger is where `matches`
-comes from. Trusted, untrusted, disarmed, yourself, a say quoting a beckon, a
+comes from. It serves `matches` the way Mudlet 5.1 does, through an `__index`
+on the globals table rather than as a plain global, so a handler that reads it
+with `rawget` fails here as it would in game. Trusted, untrusted, disarmed, yourself, a say quoting a beckon, a
 name typed in the wrong case, the pattern being changed and rejected and reset,
 and the whole list surviving a restart.
 
