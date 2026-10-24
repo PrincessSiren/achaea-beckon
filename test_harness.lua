@@ -121,6 +121,18 @@ end
 
 --- What Mudlet does with a line: match, fill the global `matches` with the
 --- whole match followed by the captures, call the handler.
+---
+--- Since Mudlet 5.1 `matches` is not in the globals table at all until a
+--- script reads it: an __index on _G builds it on first read (Mudlet #10846,
+--- on by default as the profile setting lazyCaptureGlobals). So a normal read
+--- sees the captures and `rawget(_G, "matches")` sees nil. The stub serves it
+--- the same way, so a handler that reads it raw fails here as it does there.
+local pending
+setmetatable(_G, {
+  __index = function(_, key)
+    if key == "matches" then return pending end
+  end,
+})
 local function feed(text)
   local fired = false
   for _, trigger in pairs(TRIGGERS) do
@@ -129,7 +141,7 @@ local function feed(text)
     if found[1] then
       local m = { text:sub(found[1], found[2]) }
       for i = 3, #found do m[#m + 1] = found[i] end
-      matches = m
+      pending = m
       trigger.fn()
       fired = true
     end

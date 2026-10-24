@@ -75,7 +75,7 @@
 beckonlist = beckonlist or {}
 local M = beckonlist
 
-M.VERSION = "0.2.2"
+M.VERSION = "0.2.3"
 
 -- Both filled in by build.py; see the same pair in AchaeaExplorer.lua.
 M.COMMANDS = M.COMMANDS or {}
@@ -382,8 +382,10 @@ end
 
 --- The trigger's other end. Mudlet calls it with no arguments and leaves the
 --- captures in the global `matches`; the harness passes a table instead.
+--- That global has to be read the ordinary way: since Mudlet 5.1 it is built
+--- on first read by an __index on _G, so `rawget(_G, "matches")` returns nil.
 function M.onBeckon(captured)
-    captured = captured or rawget(_G, "matches") or {}
+    captured = captured or matches or {}
     local who = titled(captured[2] or "")
     if who == "" then
         return false
