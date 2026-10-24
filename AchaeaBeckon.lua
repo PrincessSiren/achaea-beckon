@@ -382,8 +382,9 @@ end
 
 --- The trigger's other end. Mudlet calls it with no arguments and leaves the
 --- captures in the global `matches`; the harness passes a table instead.
---- That global has to be read the ordinary way: since Mudlet 5.1 it is built
---- on first read by an __index on _G, so `rawget(_G, "matches")` returns nil.
+--- It is read by name, which every Mudlet version answers. Since 5.1 it is
+--- built on first read by an __index on _G (Mudlet #10846); `rawget` sees it
+--- there too, but only because the same release taught it to (#12047).
 function M.onBeckon(captured)
     captured = captured or matches or {}
     local who = titled(captured[2] or "")
